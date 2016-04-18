@@ -15,7 +15,6 @@ public class ServerThread implements Runnable {
     private Map<String,Registo> registos;
     private Socket cliente;
     private String idCliente;
-    private int TIMEOUT = 1000*4;
 
     public ServerThread(Map<String,Registo> reg,Socket client) throws IOException{
             this.registos = reg;
@@ -27,9 +26,8 @@ public class ServerThread implements Runnable {
 
 
     public void run(){
-        boolean remover = false;        
         try{
-            cliente.setSoTimeout(Pinger.INTERVALO_PINGS + this.TIMEOUT);
+            cliente.setSoTimeout((int)2.5*Pinger.INTERVALO_PINGS);
             while(!this.cliente.isClosed()){
                 byte[] cabecalho = new byte[11];
                 for(int i = 0;i<11;i++){
@@ -59,28 +57,21 @@ public class ServerThread implements Runnable {
                         }
                         break;
                     case PDU.ACK:
-                        System.out.println(idCliente+" - ACK");
+                        //System.out.println(idCliente+" - ACK");
                         break;
                 }
             }
         } 
-        catch(SocketTimeoutException e){
-            remover = true;
-        }
         catch(IOException e){
-            remover = true;
-        }
-        if(remover){
             synchronized(this.registos){
                 this.registos.remove(idCliente);
             }
             System.out.println("removi cliente "+idCliente);
-            System.out.println("Utilizadores registados: ");
-            for(String key: this.registos.keySet()){
-                    String s_ip = this.registos.get(key).getIp().toString();
-                    int s_porta = this.registos.get(key).getPort();
-                    System.out.println(key + " - " + s_ip + ":" + s_porta );
+            printUtilizadores();
+        	try{
+            	this.cliente.close();
             }
+            catch(IOException ioe){}
         }
     }
 
@@ -102,12 +93,7 @@ public class ServerThread implements Runnable {
                 Thread t = new Thread(new Pinger(cliente));
                 t.start();
             }
-            System.out.println("Utilizadores registados: ");
-            for(String key: this.registos.keySet()){
-                    String s_ip = this.registos.get(key).getIp().toString();
-                    int s_porta = this.registos.get(key).getPort();
-                    System.out.println(key + " - " + s_ip + ":" + s_porta );
-            }
+            printUtilizadores();
     }
 
     void checkLogout(PDU p) throws IOException {
@@ -119,16 +105,19 @@ public class ServerThread implements Runnable {
                     synchronized(registos){
                         registos.remove(id);
                     }
-                    System.out.println("Utilizadores registados: ");
-                    for(String key: this.registos.keySet()){
-                            String s_ip = this.registos.get(key).getIp().toString();
-                            int s_porta = this.registos.get(key).getPort();
-                            System.out.println(key + " - " + s_ip + ":" + s_porta );
-                    }
-                    //System.out.println(registos.size());
+                    printUtilizadores();
             }
             else {
                     ;
             }
+    }
+    
+    private void printUtilizadores(){
+    	System.out.println("Utilizadores registados: ");
+        for(String key: this.registos.keySet()){
+                String s_ip = this.registos.get(key).getIp().toString();
+                int s_porta = this.registos.get(key).getPort();
+                System.out.println(key + " - " + s_ip + ":" + s_porta );
+        }
     }
 }

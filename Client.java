@@ -9,7 +9,7 @@ public class Client {
     private String id;
     private OutputStream dOut;
     private InputStream dIn;
-    private Stack<PDU> mensagens;
+    private PDUBuffer mensagens;
 
     public static final String ip = "localhost";
 
@@ -56,7 +56,7 @@ public class Client {
     public void start(){
             Scanner s = new Scanner(System.in);
 
-            mensagens = new Stack<PDU>();
+            mensagens = new PDUBuffer();
 
             System.out.println("Insira o seu ID");
             id = s.nextLine();
@@ -71,22 +71,19 @@ public class Client {
 
                     dOut.write(registo.writeMessage());
 
-                    while(mensagens.isEmpty());
-
-                    PDU mensagem = mensagens.pop();
+                    PDU mensagem = mensagens.nextMessage();
 
                     if(mensagem.getType()==PDU.ACK) {
                             System.out.println("Registo efectuado com sucesso");
                             menu2();
                     }
                     if(mensagem.getType()==PDU.NACK){
-                            System.out.println("Já existe um utilizador com o seu id");
+                            System.out.println("Ja existe um utilizador com o seu id");
                             menu1();
                     }
-                    menu2();
             }
             catch(IOException e){
-                    e.printStackTrace();
+                    System.out.println("Ligacao perdida. Sessao terminada");
             }
             finally{
                 try{
@@ -115,27 +112,37 @@ public class Client {
             System.out.println("0.Sair");
             int choice = s.nextInt();
             switch(choice){
-                            case 1: start();
-                            case 0: {
-                                    clientSocket.close();
-                                    System.exit(0);
-                            }
+                            case 1: 
+                            	start();
+                            	break;
+                            case 0:
+                                clientSocket.close();
+                                System.exit(0);
             }			
     }
 
     public void menu2() throws IOException{
             @SuppressWarnings("resource")
             Scanner s = new Scanner(System.in);
+            System.out.println("2.Ping server (para teste)");
             System.out.println("1.Logout");
             System.out.println("0.Sair");
             int choice = s.nextInt();
             switch(choice){
-                            case 1: logout();
-                            case 0: {
-                                    logout();
-                                    System.exit(0);
-                            }
+            				case 2:
+            					PDU ping = new PDU((byte)1,(byte)0,PDU.PING,null,0,null);
+            		            byte[] ping_message = ping.writeMessage();
+            		            dOut.write(ping_message);
+            		            break;
+                            case 1: 
+                            	logout();
+                            	System.exit(0);
+                            case 0: 
+                                logout();
+                                System.exit(0);
+                            
             }
+            menu2();
     }
 
     public void logout() throws IOException{
@@ -149,8 +156,8 @@ public class Client {
             try {
                     Client c = new Client();
                     c.menu1();
-            } catch (Exception e) {
-                    e.printStackTrace();
+            } catch (IOException e) {
+                System.out.println("Ligacao perdida. Sessao terminada");
             }
     }
 }

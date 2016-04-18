@@ -10,10 +10,10 @@ public class ClientListener implements Runnable {
     private Socket clientSocket;
     private OutputStream dOut;
     private InputStream dIn;
-    private Stack<PDU> mensagens;
+    private PDUBuffer mensagens;
 
 
-    public ClientListener(Socket clientSocket, Stack mensagens) throws IOException{
+    public ClientListener(Socket clientSocket, PDUBuffer mensagens) throws IOException{
             this.clientSocket = clientSocket;
             this.mensagens = mensagens;
             dOut = clientSocket.getOutputStream();
@@ -43,15 +43,15 @@ public class ClientListener implements Runnable {
                         PDU p = new PDU(cabecalho,dados);
                         switch(p.getType()){
                         case PDU.PING:
-                                System.out.println("Recebi um ping");
+                                //System.out.println("Recebi um ping");
                                 this.acknowledge();
                                 break;
                         default:
-                                this.push(p);
+                                this.mensagens.push(p);
                         }
                     }
                     catch(Exception e){
-                            e.printStackTrace();
+                            //e.printStackTrace();
                             return;
                     }
             }
@@ -62,7 +62,4 @@ public class ClientListener implements Runnable {
             dOut.write(ack.writeMessage());
     }
 
-    public void push(PDU p){
-            this.mensagens.push(p);
-    }
 }
