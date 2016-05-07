@@ -1,4 +1,8 @@
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.Socket;
 
 public class Registo {
 
@@ -7,10 +11,20 @@ public class Registo {
 	private InetAddress ip;
 	private int port;
 	
-	public Registo(String id, InetAddress ip, int port) {
+	private Socket socket;
+    private InputStream dIn;
+    private OutputStream dOut;
+	
+	public Registo(String id, InetAddress ip, int port, Socket socket) {
 		this.id = id;
 		this.ip = ip;
 		this.port = port;
+		this.setSocket(socket);
+		try{
+			this.setdOut(socket.getOutputStream());
+			this.setdIn(socket.getInputStream());
+		}
+		catch(IOException e){}
 	}
 
 	public String getId() {
@@ -37,6 +51,30 @@ public class Registo {
 		this.port = port;
 	}
 	
+	public Socket getSocket() {
+		return socket;
+	}
+
+	public void setSocket(Socket socket) {
+		this.socket = socket;
+	}
+
+	public InputStream getdIn() {
+		return dIn;
+	}
+
+	public void setdIn(InputStream dIn) {
+		this.dIn = dIn;
+	}
+
+	public OutputStream getdOut() {
+		return dOut;
+	}
+
+	public void setdOut(OutputStream dOut) {
+		this.dOut = dOut;
+	}
+
 	public void imprime(){
 		System.out.println(this.port);
 	}

@@ -16,6 +16,9 @@ public class PDU {
 	public static final byte PING = 10;
 	public static final byte ACK = 11;
 	public static final byte NACK = 12;
+	public static final byte FOUND = 13;
+	public static final byte NOT_FOUND = 14;
+
 
 	private static final int MAX_DADOS = 48*1024-11;
 	private byte versao;
@@ -29,7 +32,7 @@ public class PDU {
 		return this.tipo;
 	}
 	
-	public byte getTipo(){
+	public byte getDataType(){
 		return this.dados[0];
 	}
 	
@@ -138,7 +141,7 @@ public class PDU {
 		return message;
 	}
 	
-	private byte[] toBytes(int i)
+	public static byte[] toBytes(int i)
 	{
 	  byte[] result = new byte[4];
 
@@ -148,6 +151,10 @@ public class PDU {
 	  result[3] = (byte) (i >> 0);
 
 	  return result;
+	}
+	
+	public static int toInt(byte[] b){
+		return ByteBuffer.wrap(b).getInt();
 	}
 
 }

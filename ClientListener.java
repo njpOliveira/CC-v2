@@ -2,19 +2,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.util.Stack;
 
 public class ClientListener implements Runnable {
 
-    private Socket clientSocket;
+	@SuppressWarnings("unused")
+	private Socket socket;
     private OutputStream dOut;
     private InputStream dIn;
     private PDUBuffer mensagens;
 
 
     public ClientListener(Socket clientSocket, PDUBuffer mensagens) throws IOException{
-            this.clientSocket = clientSocket;
+            this.socket = clientSocket;
             this.mensagens = mensagens;
             dOut = clientSocket.getOutputStream();
             dIn = clientSocket.getInputStream();
@@ -34,7 +33,7 @@ public class ClientListener implements Runnable {
                                 bytesSize[i-7]=cabecalho[i];
                         }
 
-                        int tamanho = ByteBuffer.wrap(bytesSize).getInt();
+                        int tamanho = PDU.toInt(bytesSize);
                         byte[] dados = new byte[tamanho];
 
                         for(int i = 0;i<tamanho;i++){
@@ -43,7 +42,6 @@ public class ClientListener implements Runnable {
                         PDU p = new PDU(cabecalho,dados);
                         switch(p.getType()){
                         case PDU.PING:
-                                //System.out.println("Recebi um ping");
                                 this.acknowledge();
                                 break;
                         default:

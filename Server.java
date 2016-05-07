@@ -13,6 +13,9 @@ public class Server {
     public void start() throws IOException{
         this.registos = new HashMap<>();
         servidor = new ServerSocket(port);
+        
+        Thread pinger = new Thread(new Pinger(registos));
+        pinger.start();
 
         while(true){
             Socket cliente = null;

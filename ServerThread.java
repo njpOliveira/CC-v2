@@ -4,8 +4,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -49,15 +47,17 @@ public class ServerThread implements Runnable {
                 PDU p = new PDU(cabecalho,dados);
                 switch(p.getType()){
                     case PDU.REGISTER:
-                        if(p.getTipo()==PDU.IN){
+                        if(p.getDataType()==PDU.IN){
                             checkRegisto(p);
                         }
-                        else if(p.getTipo()==PDU.OUT){
+                        else if(p.getDataType()==PDU.OUT){
                             checkLogout(p);
                         }
                         break;
+                    case PDU.CONSULT_REQUEST:                    	        	
+                    	consultRequest(p);                    	                  	
+                    	break;
                     case PDU.ACK:
-                        //System.out.println(idCliente+" - ACK");
                         break;
                 }
             }
@@ -66,7 +66,6 @@ public class ServerThread implements Runnable {
             synchronized(this.registos){
                 this.registos.remove(idCliente);
             }
-            System.out.println("removi cliente "+idCliente);
             printUtilizadores();
         	try{
             	this.cliente.close();
@@ -75,11 +74,24 @@ public class ServerThread implements Runnable {
         }
     }
 
-    void checkRegisto(PDU p) throws IOException{
+    private void consultRequest(PDU p) throws IOException {
+    	
+    	/*
+    	 * TODO Perguntar a cada cliente se tem a musica e responder com CONSULT_RESPONSE.
+    	 * 		Para ja, responde sempre que nao encontrou a musica.
+    	 */
+    	
+		byte[] data = {PDU.NOT_FOUND};
+		PDU response = new PDU((byte)1,(byte)2,PDU.CONSULT_RESPONSE,null,data.length,data);
+		dOut.write(response.writeMessage());		
+	}
+
+
+	void checkRegisto(PDU p) throws IOException{
             InetAddress ip = p.getIP();
             int porta = p.getPorta();
             idCliente = p.getID();
-            Registo r = new Registo(idCliente,ip,porta);
+            Registo r = new Registo(idCliente,ip,porta,cliente);
             if(registos.containsKey(idCliente)) {
                     PDU idAlreadyUsed = new PDU((byte)1,(byte)0,PDU.NACK,null,0,null);
                     dOut.write(idAlreadyUsed.writeMessage());
@@ -90,15 +102,11 @@ public class ServerThread implements Runnable {
                 }
                 PDU registerSuccess = new PDU((byte)1,(byte)0,PDU.ACK,null,0,null);
                 dOut.write(registerSuccess.writeMessage());
-                Thread t = new Thread(new Pinger(cliente));
-                t.start();
             }
             printUtilizadores();
     }
 
     void checkLogout(PDU p) throws IOException {
-            InetAddress ip = p.getIP();
-            int porta = p.getPorta();
             String id = p.getID();
             dOut = cliente.getOutputStream();
             if(registos.containsKey(id)) {
@@ -106,9 +114,6 @@ public class ServerThread implements Runnable {
                         registos.remove(id);
                     }
                     printUtilizadores();
-            }
-            else {
-                    ;
             }
     }
     

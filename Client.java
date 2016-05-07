@@ -1,6 +1,5 @@
 import java.net.*;
 import java.util.Scanner;
-import java.util.Stack;
 import java.io.*;
 
 public class Client {
@@ -8,9 +7,12 @@ public class Client {
     private Socket clientSocket;
     private String id;
     private OutputStream dOut;
-    private InputStream dIn;
+    @SuppressWarnings("unused")
+	private InputStream dIn;
     private PDUBuffer mensagens;
 
+    private Scanner s = new Scanner(System.in);
+    
     public static final String ip = "localhost";
 
     protected static final int portaServidor = 6789;
@@ -23,7 +25,7 @@ public class Client {
 
             byte[] bytesID = this.id.getBytes();
 
-            byte[] bytesPORT = toBytes(porto);
+            byte[] bytesPORT = PDU.toBytes(porto);
 
             int sizeOfdados = 1 + bytesIP.length + bytesPORT.length + bytesID.length ;
             byte[] dados = new byte[sizeOfdados];
@@ -48,14 +50,12 @@ public class Client {
             }
 
             int tamanho = dados.length;
-            PDU message = new PDU((byte)1,(byte)0,(byte)1,null,tamanho,dados);
+            PDU message = new PDU((byte)1,(byte)0,PDU.REGISTER,null,tamanho,dados);
             return message;
 
     }
 
     public void start(){
-            Scanner s = new Scanner(System.in);
-
             mensagens = new PDUBuffer();
 
             System.out.println("Insira o seu ID");
@@ -90,72 +90,86 @@ public class Client {
                     clientSocket.close();
                 }
                 catch(Exception e){}
+                s.close();
             }	
     }
 
-    private byte[] toBytes(int i)
-    {
-      byte[] result = new byte[4];
 
-      result[0] = (byte) (i >> 24);
-      result[1] = (byte) (i >> 16);
-      result[2] = (byte) (i >> 8);
-      result[3] = (byte) (i >> 0);
-
-      return result;
-    }
-
+    /* Menu antes de registo */
     public void menu1() throws IOException{
-            @SuppressWarnings("resource")
-            Scanner s = new Scanner(System.in);
+            System.out.println("");
             System.out.println("1.Registar no servidor");
             System.out.println("0.Sair");
-            int choice = s.nextInt();
+            while(!s.hasNextInt()) s.nextLine();
+            int choice = s.nextInt(); s.nextLine();
             switch(choice){
-                            case 1: 
-                            	start();
-                            	break;
-                            case 0:
-                                clientSocket.close();
-                                System.exit(0);
+            case 1: 
+            	start();
+            	break;
+            case 0:
+                clientSocket.close();
+                System.exit(0);
             }			
     }
 
+    /* Menu apos registo */
     public void menu2() throws IOException{
-            @SuppressWarnings("resource")
-            Scanner s = new Scanner(System.in);
-            System.out.println("2.Ping server (para teste)");
+            System.out.println("");
+            System.out.println("2.Requisitar música");
             System.out.println("1.Logout");
             System.out.println("0.Sair");
-            int choice = s.nextInt();
+            while(!s.hasNextInt()) s.nextLine();
+            int choice = s.nextInt(); s.nextLine();
             switch(choice){
-            				case 2:
-            					PDU ping = new PDU((byte)1,(byte)0,PDU.PING,null,0,null);
-            		            byte[] ping_message = ping.writeMessage();
-            		            dOut.write(ping_message);
-            		            break;
-                            case 1: 
-                            	logout();
-                            	System.exit(0);
-                            case 0: 
-                                logout();
-                                System.exit(0);
-                            
+            case 2:
+            	requisitarMusica();
+            	break;
+            case 1: 
+            	logout();
+            	System.exit(0);
+            case 0: 
+                logout();
+                System.exit(0);
             }
             menu2();
     }
 
-    public void logout() throws IOException{
+    private void requisitarMusica() throws IOException {
+        System.out.println("");
+		System.out.print("Musica: ");
+		
+		// Enviar request
+		String input = s.nextLine();
+		byte[] musica = input.getBytes();
+        PDU request = new PDU((byte)1,(byte)0,PDU.CONSULT_REQUEST,null,musica.length,musica);
+        dOut.write(request.writeMessage());
+        
+        // Resposta do servidor
+        PDU response = mensagens.nextMessage();
+        if(response.getType() == PDU.CONSULT_RESPONSE){
+        	if(response.getDataType() == PDU.FOUND){
+        		// Musica encontrada        		
+        		// TODO ...
+        	}
+        	else if(response.getDataType() == PDU.NOT_FOUND){
+        		// Musica nao encontrada      		
+        		System.out.println("Nao foi possivel obter a musica \""+input+"\".");
+        	}
+    		System.out.println("Prima ENTER para voltar ao menu");
+    		s.nextLine();
+        }		
+	}
+
+	public void logout() throws IOException{
             PDU logout = this.register(PDU.OUT);
             dOut.write(logout.writeMessage());
-            //clientSocket.close();
     }
 
 
     public static void main(String[] args){
             try {
-                    Client c = new Client();
-                    c.menu1();
+                Client c = new Client();
+                c.menu1();
             } catch (IOException e) {
                 System.out.println("Ligacao perdida. Sessao terminada");
             }
