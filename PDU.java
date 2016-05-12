@@ -141,6 +141,10 @@ public class PDU {
 		return message;
 	}
 	
+	public String getRequestSong(){
+		return new String(this.dados);
+	}
+	
 	public static byte[] toBytes(int i)
 	{
 	  byte[] result = new byte[4];

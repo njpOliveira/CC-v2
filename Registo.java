@@ -14,6 +14,8 @@ public class Registo {
 	private Socket socket;
     private InputStream dIn;
     private OutputStream dOut;
+    
+    private PDUBuffer buffer;
 	
 	public Registo(String id, InetAddress ip, int port, Socket socket) {
 		this.id = id;
@@ -25,6 +27,7 @@ public class Registo {
 			this.setdIn(socket.getInputStream());
 		}
 		catch(IOException e){}
+		this.setBuffer(new PDUBuffer());
 	}
 
 	public String getId() {
@@ -73,6 +76,14 @@ public class Registo {
 
 	public void setdOut(OutputStream dOut) {
 		this.dOut = dOut;
+	}
+
+	public PDUBuffer getBuffer() {
+		return buffer;
+	}
+
+	public void setBuffer(PDUBuffer buffer) {
+		this.buffer = buffer;
 	}
 
 	public void imprime(){

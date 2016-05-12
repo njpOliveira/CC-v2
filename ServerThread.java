@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Map;
 
 public class ServerThread implements Runnable {
@@ -19,7 +20,6 @@ public class ServerThread implements Runnable {
             this.cliente = client;
             this.dOut = cliente.getOutputStream();
             this.dIn = cliente.getInputStream();
-
     }
 
 
@@ -57,6 +57,9 @@ public class ServerThread implements Runnable {
                     case PDU.CONSULT_REQUEST:                    	        	
                     	consultRequest(p);                    	                  	
                     	break;
+                    case PDU.CONSULT_RESPONSE:
+                    	this.registos.get(idCliente).getBuffer().push(p);
+                    	break;
                     case PDU.ACK:
                         break;
                 }
@@ -74,16 +77,33 @@ public class ServerThread implements Runnable {
         }
     }
 
-    private void consultRequest(PDU p) throws IOException {
+    private void consultRequest(PDU p){
     	
-    	/*
-    	 * TODO Perguntar a cada cliente se tem a musica e responder com CONSULT_RESPONSE.
-    	 * 		Para ja, responde sempre que nao encontrou a musica.
-    	 */
+    	HashSet<Registo> clientes = new HashSet<>();
+    	
+    	for(Registo registo: this.registos.values()){
+    		if(!registo.getId().equals(this.idCliente)){
+    			try{
+    				PDUBuffer buffer = registo.getBuffer();
+    				synchronized (buffer) {
+    					registo.getdOut().write(p.writeMessage());
+						PDU response = buffer.nextMessage();
+						if(response.getDataType() == PDU.FOUND){
+							clientes.add(registo);
+						}
+					}
+    			}
+    			catch(IOException e){}
+    		}
+    	}
+    	
+    	// TODO Formatar pdu e enviar. Clientes com a musica estao no hashset 'clientes'
     	
 		byte[] data = {PDU.NOT_FOUND};
 		PDU response = new PDU((byte)1,(byte)2,PDU.CONSULT_RESPONSE,null,data.length,data);
-		dOut.write(response.writeMessage());		
+		try {
+			dOut.write(response.writeMessage());
+		} catch (IOException e) {}		
 	}
 
 

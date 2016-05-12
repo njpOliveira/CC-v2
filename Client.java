@@ -115,7 +115,7 @@ public class Client {
     /* Menu apos registo */
     public void menu2() throws IOException{
             System.out.println("");
-            System.out.println("2.Requisitar música");
+            System.out.println("2.Requisitar musica");
             System.out.println("1.Logout");
             System.out.println("0.Sair");
             while(!s.hasNextInt()) s.nextLine();

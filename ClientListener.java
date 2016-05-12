@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -11,6 +12,7 @@ public class ClientListener implements Runnable {
     private InputStream dIn;
     private PDUBuffer mensagens;
 
+    public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
 
     public ClientListener(Socket clientSocket, PDUBuffer mensagens) throws IOException{
             this.socket = clientSocket;
@@ -41,11 +43,14 @@ public class ClientListener implements Runnable {
                         }
                         PDU p = new PDU(cabecalho,dados);
                         switch(p.getType()){
+                        case PDU.CONSULT_REQUEST:
+                        	this.consultResponse(p);
+                        	break;
                         case PDU.PING:
-                                this.acknowledge();
-                                break;
+                            this.acknowledge();
+                            break;
                         default:
-                                this.mensagens.push(p);
+                            this.mensagens.push(p);
                         }
                     }
                     catch(Exception e){
@@ -55,7 +60,21 @@ public class ClientListener implements Runnable {
             }
     }
 
-    public void acknowledge() throws IOException{
+    private void consultResponse(PDU request) throws IOException {
+    	String musica = pathMusicas+request.getRequestSong();
+    	
+    	byte temMusica = PDU.NOT_FOUND;
+    	File f = new File(musica);
+    	if(f.isFile()) { 
+    	    temMusica = PDU.FOUND;
+    	}
+
+		byte[] data = {temMusica};
+		PDU response = new PDU((byte)1,(byte)2,PDU.CONSULT_RESPONSE,null,data.length,data);
+		dOut.write(response.writeMessage());
+	}
+
+	public void acknowledge() throws IOException{
             PDU ack = new PDU((byte)1,(byte)2,PDU.ACK,null,0,null);
             dOut.write(ack.writeMessage());
     }
