@@ -1,6 +1,7 @@
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 
 public class PDU {
 
@@ -94,10 +95,7 @@ public class PDU {
 		else {
 			this.dados = new byte[0];
 			this.tamanho = toBytes(0);
-		}
-		
-		
-		
+		}	
 	}
 	
 	public PDU(byte[] cabecalho,byte[] dados){
@@ -139,6 +137,65 @@ public class PDU {
 		}
 		
 		return message;
+	}
+	
+	/*
+	 * Formato do array de dados de um PDU ConsultResponse:
+	 * 1 byte -> Tipo (Found/Not Found)
+	 * 4 bytes -> Número de clientes 
+	 * 	Para cada cliente:
+	 * 	4 bytes -> Comprimento dos dados do cliente
+	 * 	4 bytes -> IP
+	 * 	4 bytes -> Porta
+	 * 	(Comprimento - (4+4)) bytes -> ID
+	 */
+	public HashSet<Registo> getConsultResponseClients(){
+		if(this.tipo != CONSULT_RESPONSE) return null;
+				
+		HashSet<Registo> clientes = new HashSet<>();
+		byte[] numClientes = new byte[4];
+		int j = 1;
+		for(int i = 0; i < 4; i++){
+			numClientes[i] = this.dados[j+i];
+		}
+		j += 4;
+		int nClientes = toInt(numClientes);
+		for(int n = 0; n < nClientes; n++){
+			byte[] comp = new byte[4];
+			for(int i = 0; i < 4; i++){
+				comp[i] = this.dados[j+i];
+			}
+			j += 4;
+			int comprimento = toInt(comp);
+			
+			byte[] ip = new byte[4];
+			for(int i = 0; i<4; i++){
+				ip[i] = this.dados[j+i];
+			}
+			j += 4;
+			
+			byte[] porta = new byte[4];
+			for(int i = 0; i<4; i++){
+				porta[i] = this.dados[j+i];
+			}
+			j += 4;
+			
+			int comprimentoID = comprimento - (4 + 4);
+			byte[] id = new byte[comprimentoID];
+			for(int i = 0; i < comprimentoID ; i++){
+				id[i] = this.dados[j+i];
+			}
+			j += comprimentoID;
+			
+			try {
+				InetAddress ipAddress = InetAddress.getByAddress(ip);
+				String stringID = new String(id);
+				int intPorta = toInt(porta);
+				Registo reg = new Registo(stringID,ipAddress,intPorta);
+				clientes.add(reg);
+			} catch (UnknownHostException e) {}
+		}	
+		return clientes;
 	}
 	
 	public String getRequestSong(){

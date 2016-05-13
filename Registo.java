@@ -14,8 +14,17 @@ public class Registo {
 	private Socket socket;
     private InputStream dIn;
     private OutputStream dOut;
-    
     private PDUBuffer buffer;
+    
+	public Registo(String id, InetAddress ip, int port) {
+		this.id = id;
+		this.ip = ip;
+		this.port = port;
+		this.socket = null;
+		this.dIn = null;
+		this.dOut = null;
+		this.buffer = null;
+	}
 	
 	public Registo(String id, InetAddress ip, int port, Socket socket) {
 		this.id = id;

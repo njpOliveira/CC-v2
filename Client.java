@@ -1,4 +1,6 @@
 import java.net.*;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Scanner;
 import java.io.*;
 
@@ -147,12 +149,24 @@ public class Client {
         // Resposta do servidor
         PDU response = mensagens.nextMessage();
         if(response.getType() == PDU.CONSULT_RESPONSE){
+    		// Musica encontrada        		
         	if(response.getDataType() == PDU.FOUND){
-        		// Musica encontrada        		
-        		// TODO ...
+        		HashSet<Registo> clientes = response.getConsultResponseClients();
+        		
+        		// TODO - Probing ...
+        		
+        		System.out.println("Clientes que possuem a musica:");
+        		Iterator<Registo> it = clientes.iterator();
+        		while(it.hasNext()){
+        			Registo r = it.next();
+                    String s_ip = r.getIp().toString();
+                    int s_porta = r.getPort();
+                    System.out.println(r.getId() + " - " + s_ip + ":" + s_porta );     
+                }
+        		
         	}
+    		// Musica nao encontrada      		
         	else if(response.getDataType() == PDU.NOT_FOUND){
-        		// Musica nao encontrada      		
         		System.out.println("Nao foi possivel obter a musica \""+input+"\".");
         	}
     		System.out.println("Prima ENTER para voltar ao menu");

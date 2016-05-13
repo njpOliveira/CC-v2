@@ -6,6 +6,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 
 public class ServerThread implements Runnable {
@@ -79,17 +80,18 @@ public class ServerThread implements Runnable {
 
     private void consultRequest(PDU p){
     	
-    	HashSet<Registo> clientes = new HashSet<>();
+    	HashSet<Registo> clientesComMusica = new HashSet<>();
     	
+    	// Perguntar a cada cliente se tem a musica
     	for(Registo registo: this.registos.values()){
     		if(!registo.getId().equals(this.idCliente)){
     			try{
     				PDUBuffer buffer = registo.getBuffer();
     				synchronized (buffer) {
     					registo.getdOut().write(p.writeMessage());
-						PDU response = buffer.nextMessage();
-						if(response.getDataType() == PDU.FOUND){
-							clientes.add(registo);
+						PDU respostaCliente = buffer.nextMessage();
+						if(respostaCliente.getDataType() == PDU.FOUND){
+							clientesComMusica.add(registo);
 						}
 					}
     			}
@@ -97,11 +99,61 @@ public class ServerThread implements Runnable {
     		}
     	}
     	
-    	// TODO Formatar pdu e enviar. Clientes com a musica estao no hashset 'clientes'
-    	
-		byte[] data = {PDU.NOT_FOUND};
-		PDU response = new PDU((byte)1,(byte)2,PDU.CONSULT_RESPONSE,null,data.length,data);
+    	byte[] data;
+    	// Musica nao foi encontrada em nenhum cliente
+    	if(clientesComMusica.isEmpty()){
+    		data = new byte[1];
+			data[0] = PDU.NOT_FOUND;
+    	}
+    	// Existem clientes que possuem a musica
+    	else{
+    		int numClientes = clientesComMusica.size();
+    		byte[] nClientes = PDU.toBytes(numClientes);
+    		data = new byte[5];
+    		data[0] = PDU.FOUND;
+    		for(int i = 0; i < 4; i++){
+    			data[i+1] = nClientes[i];
+    		}
+    		
+    		Iterator<Registo> it = clientesComMusica.iterator();
+    		while(it.hasNext()){
+    			Registo registo = it.next();
+    			byte[] id = registo.getId().getBytes();
+    			byte[] ip = registo.getIp().getAddress();
+    			byte[] porta = PDU.toBytes(registo.getPort());
+    			int comp = id.length + ip.length + porta.length;
+    			byte[] comprimento = PDU.toBytes(comp);
+    			
+    			byte[] cliente = new byte[comprimento.length + comp];
+    			for(int i = 0; i < comprimento.length; i++){
+    				cliente[i] = comprimento[i];
+    			}
+    			int j = comprimento.length;
+    			for(int i = 0; i < ip.length; i++){
+    				cliente[i+j] = ip[i];
+    			}
+    			j += ip.length;
+    			for(int i = 0; i < porta.length; i++){
+    				cliente[i+j] = porta[i];
+    			}
+    			j += porta.length;
+    			for(int i = 0; i< id.length; i++){
+    				cliente[i+j] = id[i];
+    			}
+    			
+    			byte[] aux = new byte[data.length + cliente.length];
+    			for(int i = 0; i < data.length; i++){
+    				aux[i] = data[i];
+    			}
+    			j = data.length;
+    			for(int i = 0; i < cliente.length; i++){
+    				aux[i+j] = cliente[i];
+    			}
+    			data = aux;
+    		}
+		}
 		try {
+			PDU response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);    	
 			dOut.write(response.writeMessage());
 		} catch (IOException e) {}		
 	}
@@ -110,14 +162,15 @@ public class ServerThread implements Runnable {
 	void checkRegisto(PDU p) throws IOException{
             InetAddress ip = p.getIP();
             int porta = p.getPorta();
-            idCliente = p.getID();
-            Registo r = new Registo(idCliente,ip,porta,cliente);
-            if(registos.containsKey(idCliente)) {
+            String id = p.getID();
+            Registo r = new Registo(id,ip,porta,cliente);
+            if(registos.containsKey(id)) {
                     PDU idAlreadyUsed = new PDU((byte)1,(byte)0,PDU.NACK,null,0,null);
                     dOut.write(idAlreadyUsed.writeMessage());
             }
             else {
                 synchronized(this.registos){
+                	this.idCliente = id;
                     registos.put(idCliente,r);
                 }
                 PDU registerSuccess = new PDU((byte)1,(byte)0,PDU.ACK,null,0,null);
