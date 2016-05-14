@@ -1,3 +1,5 @@
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -162,6 +164,27 @@ public class PDU {
 		}
 		
 		return message;
+	}
+	
+	public static PDU readMessage(InputStream dIn) throws IOException{
+        byte[] cabecalho = new byte[11];
+        for (int i = 0;i<11;i++){
+                cabecalho[i] = (byte) dIn.read();
+        }
+
+        byte[] bytesSize = new byte[4];
+        for(int i = 7;i<11;i++){
+                bytesSize[i-7]=cabecalho[i];
+        }
+
+        int tamanho = PDU.toInt(bytesSize);
+        byte[] dados = new byte[tamanho];
+
+        for(int i = 0;i<tamanho;i++){
+                dados[i]=(byte) dIn.read();
+        }
+        PDU p = new PDU(cabecalho,dados);
+        return p;
 	}
 	
 	/*

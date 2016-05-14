@@ -7,6 +7,7 @@ import java.io.*;
 public class Client {
 
     private Socket clientSocket;
+    private ServerSocket socketReceiver;
     private String id;
     private OutputStream dOut;
     @SuppressWarnings("unused")
@@ -22,9 +23,9 @@ public class Client {
     protected static final int portaServidor = 6789;
 
     private PDU register(byte tipo){
-            int porto = clientSocket.getLocalPort();
+            int porto = socketReceiver.getLocalPort();
 
-            InetAddress ip = clientSocket.getLocalAddress();
+            InetAddress ip = clientSocket.getInetAddress();
             byte[] bytesIP = ip.getAddress();
 
             byte[] bytesID = this.id.getBytes();
@@ -61,32 +62,34 @@ public class Client {
 
     public void start(){
             mensagens = new PDUBuffer();
-
             System.out.println("Insira o seu ID");
             id = s.nextLine();
 
             try{
-                    clientSocket = new Socket(ip,portaServidor);
-                    Thread t = new Thread(new ClientListener(clientSocket,mensagens));
-                    t.start();
-                    PDU registo = this.register(PDU.IN);
-                    dOut = clientSocket.getOutputStream();
-                    dIn = clientSocket.getInputStream();
+                socketReceiver = new ServerSocket(0);
+                clientSocket = new Socket(ip,portaServidor);
+                Thread t = new Thread(new ClientListener(clientSocket,mensagens));
+                t.start();
+                PDU registo = this.register(PDU.IN);
+                dOut = clientSocket.getOutputStream();
+                dIn = clientSocket.getInputStream();
 
-                    dOut.write(registo.writeMessage());
+                dOut.write(registo.writeMessage());
 
-                    PDU mensagem = mensagens.nextMessage();
+                PDU mensagem = mensagens.nextMessage();
 
-                    if(mensagem.getType()==PDU.ACK) {
-                            System.out.println("Registo efectuado com sucesso");
-                            Thread receiverUDP = new Thread(new ClientReceiverUDP(clientSocket.getLocalPort()));
-                            receiverUDP.start();
-                            menu2();
-                    }
-                    if(mensagem.getType()==PDU.NACK){
-                            System.out.println("Ja existe um utilizador com o seu id");
-                            menu1();
-                    }
+                if(mensagem.getType()==PDU.ACK) {
+                        System.out.println("Registo efectuado com sucesso");
+                        Thread receiverUDP = new Thread(new ClientReceiverUDP(socketReceiver.getLocalPort()));
+                        receiverUDP.start();
+                        Thread receiverTCP = new Thread(new ClientMainReceiverTCP(socketReceiver));
+                        receiverTCP.start();
+                        menu2();
+                }
+                if(mensagem.getType()==PDU.NACK){
+                        System.out.println("Ja existe um utilizador com o seu id");
+                        menu1();
+                }
             }
             catch(IOException e){
                     System.out.println("Ligacao perdida. Sessao terminada");
@@ -100,8 +103,7 @@ public class Client {
             }	
     }
 
-
-    /* Menu antes de registo */
+	/* Menu antes de registo */
     public void menu1() throws IOException{
             System.out.println("");
             System.out.println("1.Registar no servidor");

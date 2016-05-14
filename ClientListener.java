@@ -1,4 +1,3 @@
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -23,27 +22,8 @@ public class ClientListener implements Runnable {
     public void run(){
             while(true){
                     try{
-                        byte[] cabecalho = new byte[11];
-                        for (int i = 0;i<11;i++){
-                                cabecalho[i] = (byte) dIn.read();
-                        }
-
-                        byte[] bytesSize = new byte[4];
-                        for(int i = 7;i<11;i++){
-                                bytesSize[i-7]=cabecalho[i];
-                        }
-
-                        int tamanho = PDU.toInt(bytesSize);
-                        byte[] dados = new byte[tamanho];
-
-                        for(int i = 0;i<tamanho;i++){
-                                dados[i]=(byte) dIn.read();
-                        }
-                        PDU p = new PDU(cabecalho,dados);
+                        PDU p = PDU.readMessage(dIn);
                         switch(p.getType()){
-                        case PDU.CONSULT_REQUEST:
-                        	this.consultRequest(p);
-                        	break;
                         case PDU.PING:
                             this.acknowledge();
                             break;
@@ -52,25 +32,11 @@ public class ClientListener implements Runnable {
                         }
                     }
                     catch(Exception e){
-                            //e.printStackTrace();
+                            e.printStackTrace();
                             return;
                     }
             }
     }
-
-    private void consultRequest(PDU request) throws IOException {
-    	String musica = Client.pathMusicas+request.getRequestSong();
-    	
-    	byte temMusica = PDU.NOT_FOUND;
-    	File f = new File(musica);
-    	if(f.isFile()) { 
-    	    temMusica = PDU.FOUND;
-    	}
-
-		byte[] data = {temMusica};
-		PDU response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
-		dOut.write(response.writeMessage());
-	}
 
 	public void acknowledge() throws IOException{
             PDU ack = new PDU((byte)1,(byte)0,PDU.ACK,null,0,null);

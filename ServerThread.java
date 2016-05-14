@@ -4,7 +4,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -28,24 +27,7 @@ public class ServerThread implements Runnable {
         try{
             cliente.setSoTimeout((int)2.5*Pinger.INTERVALO_PINGS);
             while(!this.cliente.isClosed()){
-                byte[] cabecalho = new byte[11];
-                for(int i = 0;i<11;i++){
-                        cabecalho[i]= (byte) dIn.read();
-                }
-
-                byte[] tamanho = new byte[4];
-                for (int i = 7;i<11;i++){
-                        tamanho[i-7] = cabecalho[i];
-                }
-
-                int tamanhoInt = ByteBuffer.wrap(tamanho).getInt();
-                byte[] dados = new byte[tamanhoInt];
-
-                for (int i = 0;i<tamanhoInt;i++){
-                        dados[i] = (byte) dIn.read();
-                }
-
-                PDU p = new PDU(cabecalho,dados);
+                PDU p = PDU.readMessage(dIn);
                 switch(p.getType()){
                     case PDU.REGISTER:
                         if(p.getDataType()==PDU.IN){
@@ -57,9 +39,6 @@ public class ServerThread implements Runnable {
                         break;
                     case PDU.CONSULT_REQUEST:                    	        	
                     	consultRequest(p);                    	                  	
-                    	break;
-                    case PDU.CONSULT_RESPONSE:
-                    	this.registos.get(idCliente).getBuffer().push(p);
                     	break;
                     case PDU.ACK:
                         break;
@@ -83,20 +62,26 @@ public class ServerThread implements Runnable {
     	HashSet<Registo> clientesComMusica = new HashSet<>();
     	
     	// Perguntar a cada cliente se tem a musica
-    	// TODO Melhorar isto
     	for(Registo registo: this.registos.values()){
     		if(!registo.getId().equals(this.idCliente)){
-    			try{
-    				PDUBuffer buffer = registo.getBuffer();
-    				synchronized (buffer) {
-    					registo.getdOut().write(p.writeMessage());
-						PDU respostaCliente = buffer.nextMessage();
-						if(respostaCliente.getDataType() == PDU.FOUND){
-							clientesComMusica.add(registo);
-						}
+    			Socket socket = null;
+    			try {
+					socket = new Socket(registo.getIp(),registo.getPort());
+					OutputStream output = socket.getOutputStream();
+					InputStream input = socket.getInputStream();
+					output.write(p.writeMessage());
+					PDU respostaCliente = PDU.readMessage(input);
+					if(respostaCliente.getDataType() == PDU.FOUND){
+						clientesComMusica.add(registo);
 					}
+					
+				} catch (IOException e) {}
+    			finally{
+    				try{
+    					socket.close();
+    				}
+    				catch(Exception e2){}
     			}
-    			catch(IOException e){}
     		}
     	}
     	
@@ -108,6 +93,7 @@ public class ServerThread implements Runnable {
     	}
     	// Existem clientes que possuem a musica
     	else{
+    		// Enviar pdu do tipo CONSULT_RESPONSE ao cliente
     		int numClientes = clientesComMusica.size();
     		byte[] nClientes = PDU.toBytes(numClientes);
     		data = new byte[5];

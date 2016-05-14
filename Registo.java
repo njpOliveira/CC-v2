@@ -1,5 +1,4 @@
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -12,18 +11,14 @@ public class Registo {
 	private int port;
 	
 	private Socket socket;
-    private InputStream dIn;
     private OutputStream dOut;
-    private PDUBuffer buffer;
     
 	public Registo(String id, InetAddress ip, int port) {
 		this.id = id;
 		this.ip = ip;
 		this.port = port;
 		this.socket = null;
-		this.dIn = null;
 		this.dOut = null;
-		this.buffer = null;
 	}
 	
 	public Registo(String id, InetAddress ip, int port, Socket socket) {
@@ -33,10 +28,8 @@ public class Registo {
 		this.setSocket(socket);
 		try{
 			this.setdOut(socket.getOutputStream());
-			this.setdIn(socket.getInputStream());
 		}
 		catch(IOException e){}
-		this.setBuffer(new PDUBuffer());
 	}
 
 	public String getId() {
@@ -71,14 +64,6 @@ public class Registo {
 		this.socket = socket;
 	}
 
-	public InputStream getdIn() {
-		return dIn;
-	}
-
-	public void setdIn(InputStream dIn) {
-		this.dIn = dIn;
-	}
-
 	public OutputStream getdOut() {
 		return dOut;
 	}
@@ -86,19 +71,5 @@ public class Registo {
 	public void setdOut(OutputStream dOut) {
 		this.dOut = dOut;
 	}
-
-	public PDUBuffer getBuffer() {
-		return buffer;
-	}
-
-	public void setBuffer(PDUBuffer buffer) {
-		this.buffer = buffer;
-	}
-
-	public void imprime(){
-		System.out.println(this.port);
-	}
-	
-
 	
 }
