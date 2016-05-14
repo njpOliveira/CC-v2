@@ -20,8 +20,9 @@ public class PDU {
 	public static final byte FOUND = 13;
 	public static final byte NOT_FOUND = 14;
 
+	public static final int MAX_SIZE = 48*1024;
+	public static final int MAX_DADOS = 48*1024-11;
 
-	private static final int MAX_DADOS = 48*1024-11;
 	private byte versao;
 	private byte seguranca;
 	private byte tipo;
@@ -116,6 +117,30 @@ public class PDU {
 		}
 	}
 	
+	public PDU(byte[] mensagem){
+		
+		this.versao = mensagem[0];
+		this.seguranca = mensagem[1];
+		this.tipo = mensagem[2];
+		this.opcoes = new byte[4];
+		for (int i = 3;i<7;i++){
+			this.opcoes[i-3] = mensagem[i];
+		}
+        
+		this.tamanho = new byte[4];
+		for (int i = 7;i<11;i++){
+			this.tamanho[i-7] = mensagem[i];
+		}
+
+        int tamanhoDados = PDU.toInt(this.tamanho);
+        this.dados = new byte[tamanhoDados];
+
+        for(int i = 0;i<tamanhoDados;i++){
+                dados[i]= mensagem[i+11];
+        }
+
+	}
+	
 	public byte[] writeMessage() {
 		byte[] message = new byte[1 + 1 + 1 + 4 + 4 + dados.length];
 		message[0]=versao;
@@ -199,7 +224,15 @@ public class PDU {
 	}
 	
 	public String getRequestSong(){
+		if(this.tipo != CONSULT_REQUEST) return null;
+		
 		return new String(this.dados);
+	}
+	
+	public long getProbeResponseTimestamp(){
+		if(this.tipo != PROBE_RESPONSE) return Long.MIN_VALUE;
+		
+		return toLong(this.dados);
 	}
 	
 	public static byte[] toBytes(int i)
@@ -214,8 +247,26 @@ public class PDU {
 	  return result;
 	}
 	
+	public static byte[] toBytes(long l) {
+	    byte[] result = new byte[8];
+	    for (int i = 7; i >= 0; i--) {
+	        result[i] = (byte)(l & 0xFF);
+	        l >>= 8;
+	    }
+	    return result;
+	}
+	
 	public static int toInt(byte[] b){
 		return ByteBuffer.wrap(b).getInt();
+	}
+	
+	public static long toLong(byte[] b) {
+	    long result = 0;
+	    for (int i = 0; i < 8; i++) {
+	        result <<= 8;
+	        result |= (b[i] & 0xFF);
+	    }
+	    return result;
 	}
 
 }

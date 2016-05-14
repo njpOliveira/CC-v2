@@ -12,8 +12,6 @@ public class ClientListener implements Runnable {
     private InputStream dIn;
     private PDUBuffer mensagens;
 
-    public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
-
     public ClientListener(Socket clientSocket, PDUBuffer mensagens) throws IOException{
             this.socket = clientSocket;
             this.mensagens = mensagens;
@@ -61,7 +59,7 @@ public class ClientListener implements Runnable {
     }
 
     private void consultRequest(PDU request) throws IOException {
-    	String musica = pathMusicas+request.getRequestSong();
+    	String musica = Client.pathMusicas+request.getRequestSong();
     	
     	byte temMusica = PDU.NOT_FOUND;
     	File f = new File(musica);

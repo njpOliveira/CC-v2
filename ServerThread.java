@@ -83,6 +83,7 @@ public class ServerThread implements Runnable {
     	HashSet<Registo> clientesComMusica = new HashSet<>();
     	
     	// Perguntar a cada cliente se tem a musica
+    	// TODO Melhorar isto
     	for(Registo registo: this.registos.values()){
     		if(!registo.getId().equals(this.idCliente)){
     			try{

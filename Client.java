@@ -16,6 +16,8 @@ public class Client {
     private Scanner s = new Scanner(System.in);
     
     public static final String ip = "localhost";
+    public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
+
 
     protected static final int portaServidor = 6789;
 
@@ -77,6 +79,8 @@ public class Client {
 
                     if(mensagem.getType()==PDU.ACK) {
                             System.out.println("Registo efectuado com sucesso");
+                            Thread receiverUDP = new Thread(new ClientReceiverUDP(clientSocket.getLocalPort()));
+                            receiverUDP.start();
                             menu2();
                     }
                     if(mensagem.getType()==PDU.NACK){
@@ -152,18 +156,49 @@ public class Client {
     		// Musica encontrada        		
         	if(response.getDataType() == PDU.FOUND){
         		HashSet<Registo> clientes = response.getConsultResponseClients();
+  
+    			DatagramSocket socket = new DatagramSocket();
+    			PDU probeRequestPDU = new PDU((byte)1,(byte)0,PDU.PROBE_REQUEST,null,0,null);
+    			byte[] probeRequestMessage = probeRequestPDU.writeMessage(); 
+    			byte[] responseBuffer = new byte[PDU.MAX_SIZE];
+    			
+        		long melhorTempo = Long.MAX_VALUE;
+        		Registo melhorCliente = null;
         		
-        		// TODO - Probing ...
-        		
-        		System.out.println("Clientes que possuem a musica:");
+        		// Probing para cada cliente
+        		System.out.println("\nProbing...");
         		Iterator<Registo> it = clientes.iterator();
         		while(it.hasNext()){
-        			Registo r = it.next();
-                    String s_ip = r.getIp().toString();
-                    int s_porta = r.getPort();
-                    System.out.println(r.getId() + " - " + s_ip + ":" + s_porta );     
-                }
+        			Registo registo = it.next();
+        			DatagramPacket probeRequestPacket = new DatagramPacket(
+        					probeRequestMessage, probeRequestMessage.length, registo.getIp(), registo.getPort());
+        			DatagramPacket probeResponsePacket = new DatagramPacket(responseBuffer, responseBuffer.length);
+        			socket.send(probeRequestPacket);
+        			socket.receive(probeResponsePacket);		
+        			PDU probeResponse = new PDU(probeResponsePacket.getData());
+        			long timestamp = probeResponse.getProbeResponseTimestamp();
+        			long owd = System.currentTimeMillis() - timestamp;
+        			if(owd < melhorTempo){
+        				melhorTempo = owd;
+        				melhorCliente = registo;
+        			}
+        			
+                    System.out.println(
+                    		registo.getId() +
+                    		 " - " + registo.getIp().toString() + ":" + registo.getPort() +
+                    		 " -> " +"OWD = " + owd + " ms"
+                    		);
+        		}
         		
+        		System.out.println(
+        				"\nMelhor cliente: " + 
+						melhorCliente.getId() +
+						 " - " + melhorCliente.getIp().toString() + ":" + melhorCliente.getPort() +
+						 " -> " + "OWD = " + melhorTempo + " ms");
+        		
+        		// TODO - transferencia ...
+        		
+        		socket.close();        		
         	}
     		// Musica nao encontrada      		
         	else if(response.getDataType() == PDU.NOT_FOUND){
