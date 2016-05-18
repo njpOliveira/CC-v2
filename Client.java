@@ -19,6 +19,7 @@ public class Client {
     public static final String ip = "localhost";
     public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
     public static final int TENTATIVAS_TIMEOUT = 3;
+    public static final int TAMANHO_JANELA = 8;
 
 
     protected static final int portaServidor = 6789;
@@ -229,7 +230,7 @@ public class Client {
 	}
 
 	private void request(byte[] musica, Registo cliente) throws IOException{
-		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,PDU.toBytes(8),musica.length,musica);
+		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,PDU.toBytes(Client.TAMANHO_JANELA),musica.length,musica);
 		byte[] requestMessage = requestPDU.writeMessage(); 
 		
 		DatagramSocket socket = new DatagramSocket();

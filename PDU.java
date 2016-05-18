@@ -21,6 +21,10 @@ public class PDU {
 	public static final byte NACK = 12;
 	public static final byte FOUND = 13;
 	public static final byte NOT_FOUND = 14;
+	public static final byte FIN = 15;
+	public static final byte OK = 16;
+	public static final byte KO = 17;
+
 
 	public static final int MAX_SIZE = 48*1024;
 	public static final int MAX_DADOS = 48*1024-11;
@@ -46,6 +50,10 @@ public class PDU {
 	
 	public byte[] getTamanho(){
 		return this.tamanho;
+	}
+	
+	public byte[] getOpcoes(){
+		return this.opcoes;
 	}
 	
 	public InetAddress getIP() throws UnknownHostException{
@@ -247,7 +255,7 @@ public class PDU {
 	}
 	
 	public String getRequestSong(){
-		if(this.tipo != CONSULT_REQUEST) return null;
+		if(this.tipo != CONSULT_REQUEST && this.tipo != REQUEST) return null;
 		
 		return new String(this.dados);
 	}
