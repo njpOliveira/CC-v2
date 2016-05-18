@@ -18,6 +18,7 @@ public class Client {
     
     public static final String ip = "localhost";
     public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
+    public static final int TENTATIVAS_TIMEOUT = 3;
 
 
     protected static final int portaServidor = 6789;
@@ -146,7 +147,7 @@ public class Client {
         System.out.println("");
 		System.out.print("Musica: ");
 		
-		// Enviar request
+		// Enviar consult request ao servidor
 		String input = s.nextLine();
 		byte[] musica = input.getBytes();
         PDU request = new PDU((byte)1,(byte)0,PDU.CONSULT_REQUEST,null,musica.length,musica);
@@ -159,7 +160,6 @@ public class Client {
         	if(response.getDataType() == PDU.FOUND){
         		HashSet<Registo> clientes = response.getConsultResponseClients();
   
-    			DatagramSocket socket = new DatagramSocket();
     			PDU probeRequestPDU = new PDU((byte)1,(byte)0,PDU.PROBE_REQUEST,null,0,null);
     			byte[] probeRequestMessage = probeRequestPDU.writeMessage(); 
     			byte[] responseBuffer = new byte[PDU.MAX_SIZE];
@@ -169,38 +169,55 @@ public class Client {
         		
         		// Probing para cada cliente
         		System.out.println("\nProbing...");
+        		DatagramSocket socket = null;
         		Iterator<Registo> it = clientes.iterator();
         		while(it.hasNext()){
-        			Registo registo = it.next();
-        			DatagramPacket probeRequestPacket = new DatagramPacket(
-        					probeRequestMessage, probeRequestMessage.length, registo.getIp(), registo.getPort());
-        			DatagramPacket probeResponsePacket = new DatagramPacket(responseBuffer, responseBuffer.length);
-        			socket.send(probeRequestPacket);
-        			socket.receive(probeResponsePacket);		
-        			PDU probeResponse = new PDU(probeResponsePacket.getData());
-        			long timestamp = probeResponse.getProbeResponseTimestamp();
-        			long owd = System.currentTimeMillis() - timestamp;
-        			if(owd < melhorTempo){
-        				melhorTempo = owd;
-        				melhorCliente = registo;
+        			try{
+	        			socket = new DatagramSocket();
+	        			socket.setSoTimeout(3000);
+	        			Registo registo = it.next();
+	        			DatagramPacket probeRequestPacket = new DatagramPacket(
+	        					probeRequestMessage, probeRequestMessage.length, registo.getIp(), registo.getPort());
+	        			DatagramPacket probeResponsePacket = new DatagramPacket(responseBuffer, responseBuffer.length);
+	        			socket.send(probeRequestPacket);
+	        			socket.receive(probeResponsePacket);		
+	        			PDU probeResponse = new PDU(probeResponsePacket.getData());
+	        			long timestamp = probeResponse.getProbeResponseTimestamp();
+	        			long owd = System.currentTimeMillis() - timestamp;
+	        			if(owd < melhorTempo){
+	        				melhorTempo = owd;
+	        				melhorCliente = registo;
+	        			}
+	        			
+	                    System.out.println(
+	                    		registo.getId() +
+	                    		 " - " + registo.getIp().toString() + ":" + registo.getPort() +
+	                    		 " -> " +"OWD = " + owd + " ms"
+	                    		);
+	                    socket.close();
         			}
-        			
-                    System.out.println(
-                    		registo.getId() +
-                    		 " - " + registo.getIp().toString() + ":" + registo.getPort() +
-                    		 " -> " +"OWD = " + owd + " ms"
-                    		);
+        			catch(IOException e){
+    					if(socket != null){
+    						try{
+    							socket.close();
+    						}
+    						catch(Exception e2){}
+    					}
+        			}
         		}
         		
-        		System.out.println(
-        				"\nMelhor cliente: " + 
-						melhorCliente.getId() +
-						 " - " + melhorCliente.getIp().toString() + ":" + melhorCliente.getPort() +
-						 " -> " + "OWD = " + melhorTempo + " ms");
-        		
-        		// TODO - transferencia ...
-        		
-        		socket.close();        		
+        		if(melhorCliente != null){
+	        		System.out.println(
+	        				"\nMelhor cliente: " + 
+							melhorCliente.getId() +
+							 " - " + melhorCliente.getIp().toString() + ":" + melhorCliente.getPort() +
+							 " -> " + "OWD = " + melhorTempo + " ms");
+	        		
+	        		request(musica, melhorCliente);
+        		}
+        		else{
+            		System.out.println("Nao foi obtida resposta de nenhum cliente");	
+        		}
         	}
     		// Musica nao encontrada      		
         	else if(response.getDataType() == PDU.NOT_FOUND){
@@ -209,6 +226,22 @@ public class Client {
     		System.out.println("Prima ENTER para voltar ao menu");
     		s.nextLine();
         }		
+	}
+
+	private void request(byte[] musica, Registo cliente) throws IOException{
+		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,PDU.toBytes(8),musica.length,musica);
+		byte[] requestMessage = requestPDU.writeMessage(); 
+		
+		DatagramSocket socket = new DatagramSocket();
+		DatagramPacket probeRequestPacket = new DatagramPacket(
+				requestMessage, requestMessage.length, cliente.getIp(), cliente.getPort());
+		socket.send(probeRequestPacket);
+		transferencia(socket,musica,cliente);
+	}
+
+	private void transferencia(DatagramSocket socket, byte[] musica, Registo cliente) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	public void logout() throws IOException{

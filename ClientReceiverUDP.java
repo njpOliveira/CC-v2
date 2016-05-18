@@ -37,11 +37,19 @@ public class ClientReceiverUDP implements Runnable {
 				case PDU.PROBE_REQUEST:
 					probeRequest(pdu);
 					break;
+				case PDU.REQUEST:
+					request(pdu);
+					break;
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
         }
+	}
+
+	private void request(PDU pdu) {
+		// TODO
+		
 	}
 
 	private void probeRequest(PDU pdu) throws IOException {
