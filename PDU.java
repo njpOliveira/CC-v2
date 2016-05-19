@@ -21,10 +21,14 @@ public class PDU {
 	public static final byte NACK = 12;
 	public static final byte FOUND = 13;
 	public static final byte NOT_FOUND = 14;
-	public static final byte FIN = 15;
-	public static final byte OK = 16;
-	public static final byte KO = 17;
-	public static final byte RR = 18;
+	public static final byte SYN = 15;
+	public static final byte SYN_ACK = 16;
+	public static final byte FIN = 17;
+	public static final byte OK = 18;
+	public static final byte KO = 19;
+	public static final byte SREJ = 20;
+	public static final byte REQUEST_RESPONSE = 20;
+
 
 
 	public static final int MAX_SIZE = 48*1024;
@@ -255,8 +259,44 @@ public class PDU {
 		return clientes;
 	}
 	
-	public int getRRsegment(){
-		if(this.tipo != RR) return -1;
+	public int getDataSegmentIndex(){
+		if(this.tipo != DATA) return -1;
+		
+		else return toInt(this.opcoes);
+	}
+	
+	/*
+	 * Posicoes 4 a 7 do array de dados
+	 */
+	public int getRequestResponseNumberOfSegments(){
+		if(this.tipo != REQUEST_RESPONSE) return -1;
+		
+		else{
+			byte[] numberOfSegments = new byte[4];
+			for(int i = 4; i<8; i++){
+				numberOfSegments[i-4] = this.dados[i];
+			}
+			return toInt(numberOfSegments);
+		}
+	}
+	
+	/*
+	 * Posicoes 0 a 3 do array de dados
+	 */
+	public int getRequestResponsePort(){
+		if(this.tipo != REQUEST_RESPONSE) return -1;
+		
+		else{
+			byte[] numberOfSegments = new byte[4];
+			for(int i = 0; i<4; i++){
+				numberOfSegments[i] = this.dados[i];
+			}
+			return toInt(numberOfSegments);
+		}
+	}
+
+	public int getRejectSegment() {
+		if(this.tipo != SREJ) return -1;
 		
 		else return toInt(this.dados);
 	}

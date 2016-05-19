@@ -83,7 +83,7 @@ public class Client {
 
                 if(mensagem.getType()==PDU.ACK) {
                         System.out.println("Registo efectuado com sucesso");
-                        Thread receiverUDP = new Thread(new ClientReceiverUDP(socketReceiver.getLocalPort()));
+                        Thread receiverUDP = new Thread(new ClientMainReceiverUDP(socketReceiver.getLocalPort()));
                         receiverUDP.start();
                         Thread receiverTCP = new Thread(new ClientMainReceiverTCP(socketReceiver));
                         receiverTCP.start();
@@ -231,44 +231,163 @@ public class Client {
 	}
 
 	private void request(byte[] musica, Registo cliente) throws IOException{
+		System.out.println("Debug 1");
 		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,PDU.toBytes(Client.TAMANHO_JANELA),musica.length,musica);
 		byte[] requestMessage = requestPDU.writeMessage(); 
 		
+		// Enviar request
 		DatagramSocket socket = new DatagramSocket();
+		socket.setSoTimeout(3000);
 		DatagramPacket probeRequestPacket = new DatagramPacket(
 				requestMessage, requestMessage.length, cliente.getIp(), cliente.getPort());
 		socket.send(probeRequestPacket);
-		transferencia(socket,musica,cliente);
-	}
+		System.out.println("Debug 2");
 
-	private void transferencia(DatagramSocket socket, byte[] musica, Registo cliente) {
-		boolean terminado = false;
-		boolean ok = false;
+		
+		// Esperar por request_response
 		byte[] buffer = new byte[PDU.MAX_SIZE];
     	DatagramPacket receiveDatagram = new DatagramPacket(buffer, buffer.length);
-    	int janela = TAMANHO_JANELA;
+		System.out.println("Debug 3");
+
+    	try{
+    		socket.receive(receiveDatagram);
+    	}
+    	catch(SocketTimeoutException to){
+    		// Timout -> Reenviar request
+    		try{
+    			socket.send(probeRequestPacket);
+    			socket.receive(receiveDatagram);
+    		}
+    		catch(SocketTimeoutException to2){
+    			System.out.println("Erro: Timeout no estabelecimento da ligacao");
+    			socket.close();
+    			return;
+    		}
+    	}
+		System.out.println("Debug 4");
+
+		PDU requestResponse = new PDU(receiveDatagram.getData());
+		if(requestResponse.getType() != PDU.REQUEST_RESPONSE){
+			System.out.println("Erro: Confirmacao do pedido nao foi recebida");
+			socket.close();
+			return; 
+		}
+		int numSegmentos = requestResponse.getRequestResponseNumberOfSegments();
+		int transferPort = requestResponse.getRequestResponsePort();
+    	
+		System.out.println("Debug 5");
+		// Enviar SYN
+		PDU synPDU = new PDU((byte)1,(byte)0,PDU.SYN,null,0,null);
+		byte[] synMessage = synPDU.writeMessage();
+		DatagramPacket synPacket = new DatagramPacket(
+				synMessage, synMessage.length, cliente.getIp(), transferPort);
+		socket.send(synPacket);
+		socket.close();
+		
+		System.out.println("Debug 6");
+		transferencia(cliente.getIp(),transferPort,new String(musica),numSegmentos);
+	}
+
+	private void transferencia(InetAddress clientIP, int clientPort, String musica, int numSegmentos) throws IOException{
+		System.out.println("Debug: inicio transferencia");
+		DatagramSocket socket = new DatagramSocket();
+		socket.setSoTimeout(3000);
+		boolean terminado = false;
+		byte[] buffer = new byte[PDU.MAX_SIZE];
+    	DatagramPacket receiveDatagram = new DatagramPacket(buffer, buffer.length);
     	TreeMap<Integer,byte[]> segmentos = new TreeMap<>();
-    	int segIndex = -1;
+    	
+    	// Receber pacotes
 		while(!terminado){
 			try {
 				socket.receive(receiveDatagram);
 				PDU pdu = new PDU(receiveDatagram.getData());
-				if(pdu.getType() == PDU.FIN){
-					// TODO ..
+				switch(pdu.getType()){
+				case PDU.FIN:
+					System.out.println("Debug: fin");
+					terminado = true;
+					if(pdu.getDataType() == PDU.KO){
+						System.out.println("Erro: Ligação terminada pelo emissor");
+						return;
+					}
+					break;
+				case PDU.DATA:
+					System.out.println("Debug: data");
+					int segIndex = pdu.getDataSegmentIndex();
+					segmentos.put(segIndex, pdu.getDados());
+					break;
 				}
-				else if(pdu.getType() == PDU.DATA){
-					// TODO 
+			} 
+			catch(SocketTimeoutException to){
+				if(segmentos.isEmpty()){
+					// Re-enviar SYN
+					PDU synPDU = new PDU((byte)1,(byte)0,PDU.SYN,null,0,null);
+					byte[] synMessage = synPDU.writeMessage();
+					DatagramPacket synPacket = new DatagramPacket(
+							synMessage, synMessage.length, clientIP, clientPort);
+					socket.send(synPacket);
 				}
-			} catch (IOException e) {
+				else terminado = true;
+			}
+			catch (IOException e) {
+				terminado = true;
 				e.printStackTrace();
 			}
 		}
-		if(ok){
-			// TODO Criar ficheiro
+		
+		// Verificar pacotes perdidos
+		for(int i = 0; i<numSegmentos; i++){
+			if(!segmentos.containsKey(i)){
+				//Pedir retransmissao
+				byte[] seg_i = PDU.toBytes(i);
+				PDU sRej = new PDU((byte)1,(byte)0,PDU.SREJ,null,seg_i.length,seg_i);
+				byte[] sRejMessage = sRej.writeMessage();
+				DatagramPacket sRejPacket = new DatagramPacket(
+						sRejMessage, sRejMessage.length, clientIP, clientPort);
+				try{
+					socket.send(sRejPacket);
+					socket.receive(receiveDatagram);
+				}
+				catch(IOException e){
+					//Erro -> Pedir novamente
+					try {
+						socket.send(sRejPacket);
+						socket.receive(receiveDatagram);
+					} catch (IOException e2) {
+		    			System.out.println("Erro: segmento perdido ("+i+")");
+		    			socket.close();
+		    			return;
+					}
+				}
+				PDU seg = new PDU(receiveDatagram.getData());
+				segmentos.put(seg.getDataSegmentIndex(), seg.getDados());
+			}
 		}
-		else{
-			// TODO Mensagem de erro
+		
+		// Terminar ligacao
+		byte[] data = new byte[1];
+		data[0] = PDU.OK;
+		PDU finPDU = new PDU((byte)1,(byte)0,PDU.FIN,null,data.length,data);
+		byte[] finMessage = finPDU.writeMessage();
+		DatagramPacket finPacket = new DatagramPacket(
+				finMessage, finMessage.length, clientIP, clientPort);
+		socket.send(finPacket);
+		
+		// Criar ficheiro
+		try{
+			String path = Client.pathMusicas+"+"+musica;
+			FileOutputStream fos = new FileOutputStream(path);
+			for(byte[] segmento: segmentos.values()){
+				fos.write(segmento);
+			}
+			fos.close();
+			System.out.println("Transferencia concluida ("+"+"+musica+")");
+
 		}
+		catch(IOException e){
+			System.out.println("Erro ao guardar o ficheiro");
+		}
+		socket.close();		
 	}
 
 	public void logout() throws IOException{
