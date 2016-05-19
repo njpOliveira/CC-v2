@@ -24,6 +24,7 @@ public class PDU {
 	public static final byte FIN = 15;
 	public static final byte OK = 16;
 	public static final byte KO = 17;
+	public static final byte RR = 18;
 
 
 	public static final int MAX_SIZE = 48*1024;
@@ -252,6 +253,12 @@ public class PDU {
 			} catch (UnknownHostException e) {}
 		}	
 		return clientes;
+	}
+	
+	public int getRRsegment(){
+		if(this.tipo != RR) return -1;
+		
+		else return toInt(this.dados);
 	}
 	
 	public String getRequestSong(){

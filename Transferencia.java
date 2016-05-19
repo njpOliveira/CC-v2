@@ -3,6 +3,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.TreeMap;
 
 public class Transferencia {
@@ -14,6 +15,7 @@ public class Transferencia {
 	private int numSegmentos;
 	private int ultimoSegmento;
 	private TreeMap<Integer,byte[]> segmentos;
+	private boolean terminado;
 	
 	public Transferencia(InetSocketAddress cliente, int tamanhoJanela, String musica) throws IOException{
 		this.cliente = cliente;
@@ -39,8 +41,41 @@ public class Transferencia {
 		
 		this.janelaAtual = tamanhoJanela;
 		this.ultimoSegmento = -1;
+		this.terminado = false;
 	}
 	
+	public void receiverReady(int segmento){
+		if(segmento > this.ultimoSegmento){
+			int confirmados = this.ultimoSegmento - (segmento-1);
+			this.janelaAtual += confirmados;
+			if(this.janelaAtual > this.tamanhoJanela)
+				this.janelaAtual = tamanhoJanela;
+			this.ultimoSegmento = segmento-1;
+		}
+	}
+	
+	public boolean isFinished(){
+		return this.terminado;
+	}
+	
+	public Map<Integer,byte[]> sendMax(){
+		TreeMap<Integer,byte[]> mensagens = new TreeMap<>();
+		
+		int numMensagens = this.tamanhoJanela - (this.tamanhoJanela - this.janelaAtual);
+		for(int i = 0; i<numMensagens && !this.terminado; i++){
+			int segIndex = this.ultimoSegmento + 1 + i;
+			if(segIndex < this.numSegmentos){
+				mensagens.put(segIndex, this.segmentos.get(segIndex));
+			}
+			else if(segIndex + 1 >= numSegmentos){
+				this.terminado = true;
+			}
+		}
+		
+		this.janelaAtual = 0;
+
+		return mensagens;
+	}
 
 	public InetSocketAddress getCliente() {
 		return cliente;

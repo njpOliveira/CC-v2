@@ -2,6 +2,7 @@ import java.net.*;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Scanner;
+import java.util.TreeMap;
 import java.io.*;
 
 public class Client {
@@ -241,8 +242,33 @@ public class Client {
 	}
 
 	private void transferencia(DatagramSocket socket, byte[] musica, Registo cliente) {
-		// TODO Auto-generated method stub
-		
+		boolean terminado = false;
+		boolean ok = false;
+		byte[] buffer = new byte[PDU.MAX_SIZE];
+    	DatagramPacket receiveDatagram = new DatagramPacket(buffer, buffer.length);
+    	int janela = TAMANHO_JANELA;
+    	TreeMap<Integer,byte[]> segmentos = new TreeMap<>();
+    	int segIndex = -1;
+		while(!terminado){
+			try {
+				socket.receive(receiveDatagram);
+				PDU pdu = new PDU(receiveDatagram.getData());
+				if(pdu.getType() == PDU.FIN){
+					// TODO ..
+				}
+				else if(pdu.getType() == PDU.DATA){
+					// TODO 
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		if(ok){
+			// TODO Criar ficheiro
+		}
+		else{
+			// TODO Mensagem de erro
+		}
 	}
 
 	public void logout() throws IOException{
