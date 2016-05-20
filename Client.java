@@ -228,7 +228,7 @@ public class Client {
 	}
 
 	private void request(byte[] musica, Registo cliente) throws IOException{
-		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,PDU.toBytes(Client.TAMANHO_JANELA),musica.length,musica);
+		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,null,musica.length,musica);
 		byte[] requestMessage = requestPDU.writeMessage(); 
 		
 		// Enviar request
