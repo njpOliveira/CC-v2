@@ -19,9 +19,6 @@ public class Client {
     
     public static final String ip = "localhost";
     public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
-    public static final int TENTATIVAS_TIMEOUT = 3;
-    public static final int TAMANHO_JANELA = 8;
-
 
     protected static final int portaServidor = 6789;
 
