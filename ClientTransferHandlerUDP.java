@@ -29,9 +29,9 @@ public class ClientTransferHandlerUDP implements Runnable{
         	try {
 				transferSocket.receive(receiveDatagram);
 				PDU pdu = new PDU(receiveDatagram.getData());
-				InetAddress clientIP = receiveDatagram.getAddress();
-				int clientPort = receiveDatagram.getPort();
-				if(clientIP.equals(this.clientIP) && clientPort == this.clientPort){
+				InetAddress messageIP = receiveDatagram.getAddress();
+				int messagePort = receiveDatagram.getPort();
+				if(messageIP.equals(this.clientIP) && messagePort == this.clientPort){
 					switch(pdu.getType()){
 					case PDU.SYN:
 						enviarDados();
@@ -50,7 +50,9 @@ public class ClientTransferHandlerUDP implements Runnable{
         	catch(SocketTimeoutException to){
         		this.transferSocket.close();
         	}
-        	catch (IOException e) {	}
+        	catch (IOException e) {
+        		e.printStackTrace();
+        	}
         }
 		
 	}
@@ -74,7 +76,7 @@ public class ClientTransferHandlerUDP implements Runnable{
 			DatagramPacket dataPacket = new DatagramPacket(dataMessage, dataMessage.length, this.clientIP, this.clientPort);
 			try {
 				transferSocket.send(dataPacket);
-			} catch (IOException e) {}		
+			} catch (IOException e) {}	
 		}		
 	}
 

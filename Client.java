@@ -231,7 +231,6 @@ public class Client {
 	}
 
 	private void request(byte[] musica, Registo cliente) throws IOException{
-		System.out.println("Debug 1");
 		PDU requestPDU = new PDU((byte)1,(byte)0,PDU.REQUEST,PDU.toBytes(Client.TAMANHO_JANELA),musica.length,musica);
 		byte[] requestMessage = requestPDU.writeMessage(); 
 		
@@ -241,14 +240,11 @@ public class Client {
 		DatagramPacket probeRequestPacket = new DatagramPacket(
 				requestMessage, requestMessage.length, cliente.getIp(), cliente.getPort());
 		socket.send(probeRequestPacket);
-		System.out.println("Debug 2");
-
 		
 		// Esperar por request_response
 		byte[] buffer = new byte[PDU.MAX_SIZE];
     	DatagramPacket receiveDatagram = new DatagramPacket(buffer, buffer.length);
-		System.out.println("Debug 3");
-
+    	
     	try{
     		socket.receive(receiveDatagram);
     	}
@@ -264,7 +260,6 @@ public class Client {
     			return;
     		}
     	}
-		System.out.println("Debug 4");
 
 		PDU requestResponse = new PDU(receiveDatagram.getData());
 		if(requestResponse.getType() != PDU.REQUEST_RESPONSE){
@@ -274,24 +269,21 @@ public class Client {
 		}
 		int numSegmentos = requestResponse.getRequestResponseNumberOfSegments();
 		int transferPort = requestResponse.getRequestResponsePort();
-    	
-		System.out.println("Debug 5");
+				
+		transferencia(socket,cliente.getIp(),transferPort,new String(musica),numSegmentos);
+	}
+
+	private void transferencia(DatagramSocket socket, InetAddress clientIP, int clientPort, String musica, int numSegmentos) throws IOException{
+		int timeouts = 0;
+		socket.setSoTimeout(3000);
+		
+		System.out.println("A iniciar transferencia...");
 		// Enviar SYN
 		PDU synPDU = new PDU((byte)1,(byte)0,PDU.SYN,null,0,null);
 		byte[] synMessage = synPDU.writeMessage();
 		DatagramPacket synPacket = new DatagramPacket(
-				synMessage, synMessage.length, cliente.getIp(), transferPort);
+				synMessage, synMessage.length, clientIP, clientPort);
 		socket.send(synPacket);
-		socket.close();
-		
-		System.out.println("Debug 6");
-		transferencia(cliente.getIp(),transferPort,new String(musica),numSegmentos);
-	}
-
-	private void transferencia(InetAddress clientIP, int clientPort, String musica, int numSegmentos) throws IOException{
-		System.out.println("Debug: inicio transferencia");
-		DatagramSocket socket = new DatagramSocket();
-		socket.setSoTimeout(3000);
 		boolean terminado = false;
 		byte[] buffer = new byte[PDU.MAX_SIZE];
     	DatagramPacket receiveDatagram = new DatagramPacket(buffer, buffer.length);
@@ -304,27 +296,28 @@ public class Client {
 				PDU pdu = new PDU(receiveDatagram.getData());
 				switch(pdu.getType()){
 				case PDU.FIN:
-					System.out.println("Debug: fin");
 					terminado = true;
 					if(pdu.getDataType() == PDU.KO){
+						socket.close();
 						System.out.println("Erro: Ligação terminada pelo emissor");
 						return;
 					}
 					break;
 				case PDU.DATA:
-					System.out.println("Debug: data");
 					int segIndex = pdu.getDataSegmentIndex();
 					segmentos.put(segIndex, pdu.getDados());
 					break;
 				}
 			} 
 			catch(SocketTimeoutException to){
+				timeouts++;
 				if(segmentos.isEmpty()){
+					if(timeouts >= 3){
+						socket.close();
+						System.out.println("Erro: Impossivel estabelecer ligacao");
+						return;
+					}
 					// Re-enviar SYN
-					PDU synPDU = new PDU((byte)1,(byte)0,PDU.SYN,null,0,null);
-					byte[] synMessage = synPDU.writeMessage();
-					DatagramPacket synPacket = new DatagramPacket(
-							synMessage, synMessage.length, clientIP, clientPort);
 					socket.send(synPacket);
 				}
 				else terminado = true;
@@ -336,7 +329,14 @@ public class Client {
 		}
 		
 		// Verificar pacotes perdidos
+		System.out.println("A verificar segmentos...");
 		for(int i = 0; i<numSegmentos; i++){
+			if(segmentos.containsKey(i)){
+				System.out.println("Segmento "+i+" - RECEBIDO");
+			}
+			else{
+				System.out.println("Segmento "+i+" - FALHA");
+			}
 			if(!segmentos.containsKey(i)){
 				//Pedir retransmissao
 				byte[] seg_i = PDU.toBytes(i);
@@ -361,6 +361,7 @@ public class Client {
 				}
 				PDU seg = new PDU(receiveDatagram.getData());
 				segmentos.put(seg.getDataSegmentIndex(), seg.getDados());
+				System.out.println("Segmento "+i+" - RECEBIDO <Retransmissao>");
 			}
 		}
 		

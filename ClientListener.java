@@ -5,7 +5,6 @@ import java.net.Socket;
 
 public class ClientListener implements Runnable {
 
-	@SuppressWarnings("unused")
 	private Socket socket;
     private OutputStream dOut;
     private InputStream dIn;
@@ -20,7 +19,7 @@ public class ClientListener implements Runnable {
 
     @Override
     public void run(){
-            while(true){
+            while(!socket.isClosed()){
                     try{
                         PDU p = PDU.readMessage(dIn);
                         switch(p.getType()){
@@ -31,10 +30,7 @@ public class ClientListener implements Runnable {
                             this.mensagens.push(p);
                         }
                     }
-                    catch(Exception e){
-                            e.printStackTrace();
-                            return;
-                    }
+                    catch(Exception e){}
             }
     }
 

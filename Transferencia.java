@@ -15,11 +15,12 @@ public class Transferencia {
 	public Transferencia(InetSocketAddress cliente, String musica) throws IOException{
 		this.cliente = cliente;
 		this.musica = musica;
+		this.segmentos = new TreeMap<>();
 		
 		// Carregar dados do ficheiro 
 		Path filePath = Paths.get(Client.pathMusicas+musica);
 		byte[] dadosFicheiro = Files.readAllBytes(filePath);
-		int numSegmentos = dadosFicheiro.length / PDU.MAX_DADOS + ((dadosFicheiro.length % PDU.MAX_DADOS == 0) ? 0 : 1);
+		this.numSegmentos = dadosFicheiro.length / PDU.MAX_DADOS + ((dadosFicheiro.length % PDU.MAX_DADOS == 0) ? 0 : 1);
 		for(int i = 0; i<numSegmentos; i++){
 			int tamanhoSegmento = PDU.MAX_DADOS;
 			if(i == numSegmentos-1){
