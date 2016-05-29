@@ -22,10 +22,10 @@ public class Client {
 
     protected static final int portaServidor = 6789;
 
-    private PDU register(byte tipo){
+    private PDU register(byte tipo) throws UnknownHostException{
             int porto = socketReceiver.getLocalPort();
 
-            InetAddress ip = clientSocket.getInetAddress();
+            InetAddress ip = InetAddress.getLocalHost();
             byte[] bytesIP = ip.getAddress();
 
             byte[] bytesID = this.id.getBytes();
