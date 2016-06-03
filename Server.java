@@ -8,7 +8,10 @@ public class Server {
 
     private Map<String,Registo> registos;
     private static ServerSocket servidor;
-    public static final int port = 6789;
+    //public static final int port = 6789;
+    //public static final int port = 6790;
+    public static final int port = 6791;
+
     
     public static final String masterIP = "localhost";
     public static final int masterPort = 5846;

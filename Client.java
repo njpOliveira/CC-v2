@@ -20,7 +20,10 @@ public class Client {
     public static final String ip = "localhost";
     public static final String pathMusicas = System.getProperty("user.dir")+"\\kit_TP2\\";
 
-    protected static final int portaServidor = 6789;
+    //protected static final int portaServidor = 6789;
+    //protected static final int portaServidor = 6790;
+    protected static final int portaServidor = 6791;
+
 
     private PDU register(byte tipo) throws UnknownHostException{
             int porto = socketReceiver.getLocalPort();

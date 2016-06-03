@@ -24,7 +24,7 @@ public class ServerThread implements Runnable {
 
 
     public void run(){
-        try{
+        try{       	
             cliente.setSoTimeout((int)2.5*Pinger.INTERVALO_PINGS);
             while(!this.cliente.isClosed()){
                 PDU p = PDU.readMessage(dIn);
@@ -79,7 +79,7 @@ public class ServerThread implements Runnable {
 						clientesComMusica.add(registo);
 					}
 					
-				} catch (IOException e) {}
+				} catch (IOException e) {e.printStackTrace();}
     			finally{
     				try{
     					socket.close();
@@ -93,7 +93,7 @@ public class ServerThread implements Runnable {
     	PDU response = null;
     	// Musica nao foi encontrada em nenhum cliente
     	if(clientesComMusica.isEmpty()){
-    		if(p.getType() == PDU.CONSULT_REQUEST_FROM_MASTER){
+    		if(p.getType() == PDU.CONSULT_REQUEST_FROM_MASTER){    			
         		// Pedido foi feito pelo master
         		// Enviar NOT_FOUND
         		byte[] data = new byte[1];
@@ -101,62 +101,56 @@ public class ServerThread implements Runnable {
     			response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
     		}
     		else{
-    		// Recaminhar pedido para o master
     			
+    			System.out.println("Musica nao encontrada no dominio. Pedido reencaminhado para o master");
+    			
+    			// Reencaminhar pedido para o master
+    			Socket master = null;
+    			try{
+    				master = new Socket(Server.masterIP,Server.masterPort);
+    				OutputStream mOut = master.getOutputStream();
+    				InputStream mIn = master.getInputStream();
+    				byte[] dados_request = p.getDados();
+    				byte[] novos_dados = new byte[dados_request.length+4+4];
+    				for(int i = 0; i<dados_request.length; i++){
+    					novos_dados[i] = dados_request[i];
+    				}
+    				byte[] ip_local = InetAddress.getLocalHost().getAddress();
+    				for(int i = 0; i<ip_local.length;i++){
+    					int j = i+dados_request.length;
+    					novos_dados[j] = ip_local[i];
+    				}
+    				byte[] porta_servidor = PDU.toBytes(Server.port);
+    				for(int i = 0; i<porta_servidor.length; i++){
+    					int j = i+dados_request.length+ip_local.length;
+    					novos_dados[j] = porta_servidor[i];
+    				}
+    				PDU requestToMaster = new PDU((byte)1,(byte)0,PDU.CONSULT_REQUEST,null,novos_dados.length,novos_dados); 
+    				mOut.write(requestToMaster.writeMessage());
+    				
+    				response = PDU.readMessage(mIn);
+    				
+    				master.close();
+    			}
+    			catch(Exception e){
+    				e.printStackTrace();
+            		byte[] data = new byte[1];
+        			data[0] = PDU.NOT_FOUND;
+        			response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
+        			try {
+						master.close();
+					} catch (IOException e1) {}
+    			}
     		}
     	}
     	// Existem clientes que possuem a musica
     	else{
     		// Enviar pdu do tipo CONSULT_RESPONSE ao cliente
-    		int numClientes = clientesComMusica.size();
-    		byte[] nClientes = PDU.toBytes(numClientes);
-    		byte[] data = new byte[5];
-    		data[0] = PDU.FOUND;
-    		for(int i = 0; i < 4; i++){
-    			data[i+1] = nClientes[i];
-    		}
-    		
-    		it = clientesComMusica.iterator();
-    		while(it.hasNext()){
-    			Registo registo = it.next();
-    			byte[] id = registo.getId().getBytes();
-    			byte[] ip = registo.getIp().getAddress();
-    			byte[] porta = PDU.toBytes(registo.getPort());
-    			int comp = id.length + ip.length + porta.length;
-    			byte[] comprimento = PDU.toBytes(comp);
-    			
-    			byte[] cliente = new byte[comprimento.length + comp];
-    			for(int i = 0; i < comprimento.length; i++){
-    				cliente[i] = comprimento[i];
-    			}
-    			int j = comprimento.length;
-    			for(int i = 0; i < ip.length; i++){
-    				cliente[i+j] = ip[i];
-    			}
-    			j += ip.length;
-    			for(int i = 0; i < porta.length; i++){
-    				cliente[i+j] = porta[i];
-    			}
-    			j += porta.length;
-    			for(int i = 0; i< id.length; i++){
-    				cliente[i+j] = id[i];
-    			}
-    			
-    			byte[] aux = new byte[data.length + cliente.length];
-    			for(int i = 0; i < data.length; i++){
-    				aux[i] = data[i];
-    			}
-    			j = data.length;
-    			for(int i = 0; i < cliente.length; i++){
-    				aux[i+j] = cliente[i];
-    			}
-    			data = aux;
-    		}
-			response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
-		}
+    		response = PDU.consultResponse(clientesComMusica);
+    	}
 		try {
 			dOut.write(response.writeMessage());
-		} catch (IOException e) {}		
+		} catch (IOException e) {e.printStackTrace();}		
 	}
 
 

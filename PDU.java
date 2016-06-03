@@ -4,6 +4,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 public class PDU {
 
@@ -201,6 +203,54 @@ public class PDU {
         return p;
 	}
 	
+	public static PDU consultResponse(Set<Registo> clientesComMusica){
+		int numClientes = clientesComMusica.size();
+		byte[] nClientes = PDU.toBytes(numClientes);
+		byte[] data = new byte[5];
+		data[0] = PDU.FOUND;
+		for(int i = 0; i < 4; i++){
+			data[i+1] = nClientes[i];
+		}
+		
+		Iterator<Registo> it = clientesComMusica.iterator();
+		while(it.hasNext()){
+			Registo registo = it.next();
+			byte[] id = registo.getId().getBytes();
+			byte[] ip = registo.getIp().getAddress();
+			byte[] porta = PDU.toBytes(registo.getPort());
+			int comp = id.length + ip.length + porta.length;
+			byte[] comprimento = PDU.toBytes(comp);
+			
+			byte[] cliente = new byte[comprimento.length + comp];
+			for(int i = 0; i < comprimento.length; i++){
+				cliente[i] = comprimento[i];
+			}
+			int j = comprimento.length;
+			for(int i = 0; i < ip.length; i++){
+				cliente[i+j] = ip[i];
+			}
+			j += ip.length;
+			for(int i = 0; i < porta.length; i++){
+				cliente[i+j] = porta[i];
+			}
+			j += porta.length;
+			for(int i = 0; i< id.length; i++){
+				cliente[i+j] = id[i];
+			}
+			
+			byte[] aux = new byte[data.length + cliente.length];
+			for(int i = 0; i < data.length; i++){
+				aux[i] = data[i];
+			}
+			j = data.length;
+			for(int i = 0; i < cliente.length; i++){
+				aux[i+j] = cliente[i];
+			}
+			data = aux;
+		}
+		return new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
+	}
+	
 	/*
 	 * Formato do array de dados de um PDU ConsultResponse:
 	 * 1 byte -> Tipo (Found/Not Found)
@@ -212,7 +262,8 @@ public class PDU {
 	 * 	(Comprimento - (4+4)) bytes -> ID
 	 */
 	public HashSet<Registo> getConsultResponseClients(){
-		if(this.tipo != CONSULT_RESPONSE) return null;
+		if(this.tipo != CONSULT_RESPONSE) return new HashSet<>();
+		if(this.getDataType() == NOT_FOUND) return new HashSet<>();
 				
 		HashSet<Registo> clientes = new HashSet<>();
 		byte[] numClientes = new byte[4];
@@ -303,8 +354,6 @@ public class PDU {
 	}
 	
 	public String getRequestSong(){
-		if(this.tipo != CONSULT_REQUEST && this.tipo != REQUEST) return null;
-		
 		return new String(this.dados);
 	}
 	

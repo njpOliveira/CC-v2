@@ -23,6 +23,7 @@ public class ClientReceiverTCP implements Runnable {
 				PDU p = PDU.readMessage(dIn);
 				switch(p.getType()){
 				case PDU.CONSULT_REQUEST:
+				case PDU.CONSULT_REQUEST_FROM_MASTER:
 					consultRequest(p);
 					break;
 				}

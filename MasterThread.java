@@ -4,6 +4,8 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 public class MasterThread implements Runnable{
@@ -48,9 +50,69 @@ public class MasterThread implements Runnable{
         catch(Exception e){}		
 	}
 
-	private void consultRequest(PDU p) {
-		// TODO Auto-generated method stub
+	private void consultRequest(PDU p) throws IOException {
+		byte[] dados = p.getDados();
+		byte[] musica = new byte[dados.length-8];
+		byte[] ip = new byte[4];
+		byte[] port = new byte[4];
+		for(int i = 0; i<dados.length-8; i++){
+			musica[i] = dados[i];
+		}
+		for(int i = 0; i<4; i++){
+			int j = i+musica.length;
+			ip[i] = dados[j];
+		}
+		for(int i = 0; i<4; i++){
+			int j = i+musica.length+4;
+			port[i] = dados[j];
+		}
+		InetSocketAddress enderecoServidor = new InetSocketAddress(InetAddress.getByAddress(ip), PDU.toInt(port));
 		
+		PDU request = new PDU((byte)1,(byte)0,PDU.CONSULT_REQUEST_FROM_MASTER,null,musica.length,musica); 
+		byte[] request_message = request.writeMessage();
+		HashSet<Registo> clientes = new HashSet<>(); 
+
+		Iterator<InetSocketAddress> it = this.registos.iterator();
+		while(it.hasNext() && clientes.size() < Master.MAX_HITS){
+			InetSocketAddress endereco = it.next();
+			if(!enderecoServidor.equals(endereco)){
+				Socket s = null;
+				try{
+					s = new Socket(endereco.getAddress(), endereco.getPort());
+					OutputStream sOut = s.getOutputStream();
+					InputStream sIn = s.getInputStream();
+					sOut.write(request_message);
+					s.setSoTimeout(5000);
+					PDU response = PDU.readMessage(sIn);
+					HashSet<Registo> clientesResposta = response.getConsultResponseClients();
+					clientes.addAll(clientesResposta);
+				}
+				catch(Exception e){
+					e.printStackTrace();
+					s.setSoTimeout(0);
+				}
+			}
+		}
+		
+		if(clientes.isEmpty()){
+			System.out.println("Musica nao encontrada");
+		}
+		else{
+			System.out.println("Clientes com musica: "+clientes.size());
+		}
+		
+		try{
+			if(!clientes.isEmpty()){
+				dOut.write(PDU.consultResponse(clientes).writeMessage());
+			}
+			else{
+				byte[] data = new byte[1];
+    			data[0] = PDU.NOT_FOUND;
+    			PDU response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
+    			dOut.write(response.writeMessage());
+			}
+		}
+		catch(IOException e){}
 	}
 	
     private void printDominios(){
