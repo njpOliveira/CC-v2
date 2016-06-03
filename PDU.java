@@ -27,7 +27,8 @@ public class PDU {
 	public static final byte OK = 18;
 	public static final byte KO = 19;
 	public static final byte SREJ = 20;
-	public static final byte REQUEST_RESPONSE = 20;
+	public static final byte REQUEST_RESPONSE = 21;
+	public static final byte CONSULT_REQUEST_FROM_MASTER = 22;
 
 
 

@@ -37,7 +37,8 @@ public class ServerThread implements Runnable {
                             checkLogout(p);
                         }
                         break;
-                    case PDU.CONSULT_REQUEST:                    	        	
+                    case PDU.CONSULT_REQUEST:
+                    case PDU.CONSULT_REQUEST_FROM_MASTER:
                     	consultRequest(p);                    	                  	
                     	break;
                     case PDU.ACK:
@@ -62,11 +63,14 @@ public class ServerThread implements Runnable {
     	HashSet<Registo> clientesComMusica = new HashSet<>();
     	
     	// Perguntar a cada cliente se tem a musica
-    	for(Registo registo: this.registos.values()){
+    	Iterator<Registo> it = this.registos.values().iterator();
+    	while(it.hasNext() && clientesComMusica.size() < Server.MAX_HITS){
+    		Registo registo = (Registo)it.next();
     		if(!registo.getId().equals(this.idCliente)){
     			Socket socket = null;
     			try {
 					socket = new Socket(registo.getIp(),registo.getPort());
+					socket.setSoTimeout(5000);
 					OutputStream output = socket.getOutputStream();
 					InputStream input = socket.getInputStream();
 					output.write(p.writeMessage());
@@ -85,24 +89,34 @@ public class ServerThread implements Runnable {
     		}
     	}
     	
-    	byte[] data;
+    	
+    	PDU response = null;
     	// Musica nao foi encontrada em nenhum cliente
     	if(clientesComMusica.isEmpty()){
-    		data = new byte[1];
-			data[0] = PDU.NOT_FOUND;
+    		if(p.getType() == PDU.CONSULT_REQUEST_FROM_MASTER){
+        		// Pedido foi feito pelo master
+        		// Enviar NOT_FOUND
+        		byte[] data = new byte[1];
+    			data[0] = PDU.NOT_FOUND;
+    			response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
+    		}
+    		else{
+    		// Recaminhar pedido para o master
+    			
+    		}
     	}
     	// Existem clientes que possuem a musica
     	else{
     		// Enviar pdu do tipo CONSULT_RESPONSE ao cliente
     		int numClientes = clientesComMusica.size();
     		byte[] nClientes = PDU.toBytes(numClientes);
-    		data = new byte[5];
+    		byte[] data = new byte[5];
     		data[0] = PDU.FOUND;
     		for(int i = 0; i < 4; i++){
     			data[i+1] = nClientes[i];
     		}
     		
-    		Iterator<Registo> it = clientesComMusica.iterator();
+    		it = clientesComMusica.iterator();
     		while(it.hasNext()){
     			Registo registo = it.next();
     			byte[] id = registo.getId().getBytes();
@@ -138,9 +152,9 @@ public class ServerThread implements Runnable {
     			}
     			data = aux;
     		}
+			response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);
 		}
 		try {
-			PDU response = new PDU((byte)1,(byte)0,PDU.CONSULT_RESPONSE,null,data.length,data);    	
 			dOut.write(response.writeMessage());
 		} catch (IOException e) {}		
 	}

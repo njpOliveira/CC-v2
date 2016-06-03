@@ -12,6 +12,7 @@ public class Server {
     
     public static final String masterIP = "localhost";
     public static final int masterPort = 5846;
+    public static final int MAX_HITS = 5;
 	
     public void start() throws IOException{
         this.registos = new HashMap<>();
@@ -83,7 +84,6 @@ public class Server {
         masterConnection.setSoTimeout(20000);
         PDU resposta = PDU.readMessage(dIn);
         if(resposta.getType() == PDU.ACK){
-        	System.out.println("Registo no master sucedido");
         	masterConnection.close();
         }
         else{

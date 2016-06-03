@@ -9,6 +9,7 @@ public class Master {
     private Set<InetSocketAddress> registos;
     private static ServerSocket ss;
     public static final int port = 5846;
+    public static final int MAX_HITS = 10;
 	
     public void start() throws IOException{
         this.registos = new HashSet<>();
