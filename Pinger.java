@@ -5,7 +5,7 @@ public class Pinger implements Runnable{
 	
     private Map<String,Registo> registos;
     
-    public static final int INTERVALO_PINGS = 5000;
+    public static final int INTERVALO_PINGS = 15000;
 	
 	public Pinger(Map<String,Registo> registos){
 		this.registos = registos;
