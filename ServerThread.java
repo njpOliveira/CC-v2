@@ -70,7 +70,7 @@ public class ServerThread implements Runnable {
     			Socket socket = null;
     			try {
 					socket = new Socket(registo.getIp(),registo.getPort());
-					socket.setSoTimeout(5000);
+					socket.setSoTimeout(500);
 					OutputStream output = socket.getOutputStream();
 					InputStream input = socket.getInputStream();
 					output.write(p.writeMessage());

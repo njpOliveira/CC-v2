@@ -77,7 +77,20 @@ public class ClientTransferHandlerUDP implements Runnable{
 			try {
 				transferSocket.send(dataPacket);
 			} catch (IOException e) {}	
-		}		
+		}
+		try{
+			byte[] data = new byte[1];
+			data[0] = PDU.OK;
+			PDU p = new PDU((byte)1,(byte)0,PDU.FIN,null,data.length,data);
+			byte[] dataMessage = p.writeMessage();
+			DatagramPacket dataPacket = new DatagramPacket(dataMessage, dataMessage.length, this.clientIP, this.clientPort);
+			try{
+				Thread.sleep(50);
+			}
+			catch(InterruptedException interrupt){}
+			transferSocket.send(dataPacket);
+		}
+		catch(IOException e){}
 	}
 
 }

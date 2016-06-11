@@ -176,7 +176,7 @@ public class Client {
         		while(it.hasNext()){
         			try{
 	        			socket = new DatagramSocket();
-	        			socket.setSoTimeout(3000);
+	        			socket.setSoTimeout(500);
 	        			Registo registo = it.next();
 	        			DatagramPacket probeRequestPacket = new DatagramPacket(
 	        					probeRequestMessage, probeRequestMessage.length, registo.getIp(), registo.getPort());
@@ -236,7 +236,7 @@ public class Client {
 		
 		// Enviar request
 		DatagramSocket socket = new DatagramSocket();
-		socket.setSoTimeout(3000);
+		socket.setSoTimeout(500);
 		DatagramPacket probeRequestPacket = new DatagramPacket(
 				requestMessage, requestMessage.length, cliente.getIp(), cliente.getPort());
 		socket.send(probeRequestPacket);
@@ -275,7 +275,7 @@ public class Client {
 
 	private void transferencia(DatagramSocket socket, InetAddress clientIP, int clientPort, String musica, int numSegmentos) throws IOException{
 		int timeouts = 0;
-		socket.setSoTimeout(3000);
+		socket.setSoTimeout(500);
 		
 		System.out.println("A iniciar transferencia...");
 		// Enviar SYN
